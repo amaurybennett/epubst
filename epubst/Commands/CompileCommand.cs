@@ -41,7 +41,7 @@ public static class CompileCommand
                     var markdown = File.ReadAllText(item.Fichier.FullName);
                     var nomBase = Path.GetFileNameWithoutExtension(item.Fichier.Name);
                     var nomCss = projet.EpubOptions.Css?.Name;
-                    var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, nomCss);
+                    var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss);
                     Console.WriteLine($"  {item.Fichier.Name} → {result.Documents.Count} document(s), {result.Chapitres.Count} chapitre(s)");
                 }
 

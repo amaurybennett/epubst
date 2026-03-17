@@ -16,19 +16,22 @@ public static class MarkdownConverter
         .UseCustomContainers()
         .Build();
 
-    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, string? nomFichierCss = null)
+    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null)
     {
         var document = Markdown.Parse(markdown, Pipeline);
         var blocs = document.ToList();
+        var images = new List<FileInfo>();
 
-        return navigation
-            ? ConvertirAvecNavigation(blocs, nomFichierBase, nomFichierCss)
-            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss);
+        var result = navigation
+            ? ConvertirAvecNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images)
+            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images);
+
+        return result with { Images = images };
     }
 
-    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss)
+    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images)
     {
-        var corps = RendreBlocs(blocs);
+        var corps = RendreBlocs(blocs, projectDir, images);
         var nomFichier = $"{nomFichierBase}.xhtml";
         return new ConversionResult
         {
@@ -37,7 +40,7 @@ public static class MarkdownConverter
         };
     }
 
-    private static ConversionResult ConvertirAvecNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss)
+    private static ConversionResult ConvertirAvecNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images)
     {
         // Segmenter par H1 — contenu avant le premier H1 ignoré (option C)
         var segments = new List<(string Titre, List<Block> Blocs)>();
@@ -72,7 +75,7 @@ public static class MarkdownConverter
             var (titre, segmentBlocs) = segments[i];
             var nomFichier = $"{nomFichierBase}_{SanitiserNomFichier(titre)}.xhtml";
             var classeBody = Path.GetFileNameWithoutExtension(nomFichier);
-            var corps = RendreBlocs(segmentBlocs);
+            var corps = RendreBlocs(segmentBlocs, projectDir, images);
             documents.Add(new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(titre, classeBody, corps, nomFichierCss) });
             chapitres.Add(new ChapitreNav { Titre = titre, NomFichier = nomFichier });
         }
@@ -80,7 +83,7 @@ public static class MarkdownConverter
         return new ConversionResult { Documents = documents, Chapitres = chapitres };
     }
 
-    private static string RendreBlocs(IEnumerable<Block> blocs)
+    private static string RendreBlocs(IEnumerable<Block> blocs, DirectoryInfo projectDir, List<FileInfo> images)
     {
         var sb = new StringBuilder();
         foreach (var bloc in blocs)
@@ -88,18 +91,18 @@ public static class MarkdownConverter
             switch (bloc)
             {
                 case HeadingBlock h when h.Level == 1:
-                    sb.AppendLine($"  <h1{AttrClasse(h)}>{RendreInlines(h.Inline)}</h1>");
+                    sb.AppendLine($"  <h1{AttrClasse(h)}>{RendreInlines(h.Inline, projectDir, images)}</h1>");
                     break;
                 case HeadingBlock h when h.Level == 2:
                     sb.AppendLine($"  <hr{AttrClasse(h)}/>");
                     break;
                 case ParagraphBlock p:
-                    sb.AppendLine($"  <p{AttrClasse(p)}>{RendreInlines(p.Inline)}</p>");
+                    sb.AppendLine($"  <p{AttrClasse(p)}>{RendreInlines(p.Inline, projectDir, images)}</p>");
                     break;
                 case CustomContainer cc:
                     var classeDiv = cc.Info is not null ? $" class=\"{EscapeXml(cc.Info)}\"" : string.Empty;
                     sb.AppendLine($"  <div{classeDiv}>");
-                    sb.Append(RendreBlocs(cc));
+                    sb.Append(RendreBlocs(cc, projectDir, images));
                     sb.AppendLine("  </div>");
                     break;
                 // H3+ et blocs hors scope ignorés silencieusement
@@ -115,22 +118,48 @@ public static class MarkdownConverter
         return $" class=\"{string.Join(" ", attrs.Classes)}\"";
     }
 
-    private static string RendreInlines(ContainerInline? inlines)
+    private static string RendreInlines(ContainerInline? inlines, DirectoryInfo projectDir, List<FileInfo> images)
     {
         if (inlines == null) return string.Empty;
         var sb = new StringBuilder();
         foreach (var inline in inlines)
-            sb.Append(RendreInline(inline));
+            sb.Append(RendreInline(inline, projectDir, images));
         return sb.ToString();
     }
 
-    private static string RendreInline(Inline inline) => inline switch
+    private static string RendreInline(Inline inline, DirectoryInfo projectDir, List<FileInfo> images)
     {
-        LiteralInline lit => EscapeXml(lit.Content.ToString()),
-        EmphasisInline em when em.DelimiterCount == 1 => $"<em>{RendreInlines(em)}</em>",
-        EmphasisInline em => $"<strong>{RendreInlines(em)}</strong>",
-        _ => string.Empty
-    };
+        switch (inline)
+        {
+            case LinkInline li when li.IsImage:
+                var alt = EscapeXml(ExtraireTexte(li));
+                var fichier = ResoudreImage(li.Url ?? string.Empty, projectDir);
+                if (!images.Any(f => f.FullName == fichier.FullName))
+                    images.Add(fichier);
+                return $"<img src=\"../images/{EscapeXml(fichier.Name)}\" alt=\"{alt}\"/>";
+            case LiteralInline lit:
+                return EscapeXml(lit.Content.ToString());
+            case EmphasisInline em when em.DelimiterCount == 1:
+                return $"<em>{RendreInlines(em, projectDir, images)}</em>";
+            case EmphasisInline em:
+                return $"<strong>{RendreInlines(em, projectDir, images)}</strong>";
+            default:
+                return string.Empty;
+        }
+    }
+
+    private static FileInfo ResoudreImage(string chemin, DirectoryInfo projectDir)
+    {
+        var cheminResolu = Path.IsPathRooted(chemin)
+            ? chemin
+            : Path.Combine(projectDir.FullName, chemin);
+
+        var fichier = new FileInfo(cheminResolu);
+        if (!fichier.Exists)
+            throw new FileNotFoundException($"Image introuvable : '{cheminResolu}'.", cheminResolu);
+
+        return fichier;
+    }
 
     private static string EscapeXml(string texte) =>
         texte.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");

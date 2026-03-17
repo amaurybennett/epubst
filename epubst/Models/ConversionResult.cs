@@ -16,4 +16,5 @@ public record ConversionResult
 {
     public List<XhtmlDocument> Documents { get; init; } = [];
     public List<ChapitreNav> Chapitres { get; init; } = [];
+    public List<FileInfo> Images { get; init; } = [];
 }
