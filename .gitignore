@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+
+# Test results
+TestResults/
+
+# Claude
+.claude/
+
+# Dossiers de test personnels
+sample_book/

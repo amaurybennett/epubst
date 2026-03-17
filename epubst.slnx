@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="epubst.Tests/epubst.Tests.csproj" />
+  <Project Path="epubst/epubst.csproj" />
+</Solution>
