@@ -11,17 +11,26 @@ public static class ProjectParser
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
-    public static Metadonnees ParseMetadonnees(string toml)
+    public static BookProject Parse(string toml, DirectoryInfo projectDir)
     {
-        var projet = TomlSerializer.Deserialize<ProjetToml>(toml, Options)
-            ?? throw new InvalidOperationException("Le fichier book.toml est invalide.");
-        return projet.Metadonnees ?? throw new InvalidOperationException("La section [metadonnees] est absente du fichier book.toml.");
+        var projet = DeserialiserToml(toml);
+        return new BookProject
+        {
+            Metadonnees = ExtraireMetadonnees(projet),
+            EpubOptions = ExtraireEpubOptions(projet, projectDir),
+            Contenu = ExtraireContenu(projet, projectDir)
+        };
     }
 
-    public static EpubOptions ParseEpubOptions(string toml, DirectoryInfo projectDir)
-    {
-        var projet = TomlSerializer.Deserialize<ProjetToml>(toml, Options)
+    private static ProjetToml DeserialiserToml(string toml) =>
+        TomlSerializer.Deserialize<ProjetToml>(toml, Options)
             ?? throw new InvalidOperationException("Le fichier book.toml est invalide.");
+
+    private static Metadonnees ExtraireMetadonnees(ProjetToml projet) =>
+        projet.Metadonnees ?? throw new InvalidOperationException("La section [metadonnees] est absente du fichier book.toml.");
+
+    private static EpubOptions ExtraireEpubOptions(ProjetToml projet, DirectoryInfo projectDir)
+    {
         var epub = projet.Epub ?? throw new InvalidOperationException("La section [epub] est absente du fichier book.toml.");
 
         if (string.IsNullOrWhiteSpace(epub.Couverture))
@@ -36,6 +45,21 @@ public static class ProjectParser
             Css = css,
             TableDesMatieres = epub.TableDesMatieres
         };
+    }
+
+    private static List<ContenuItem> ExtraireContenu(ProjetToml projet, DirectoryInfo projectDir)
+    {
+        if (projet.Contenu is null || projet.Contenu.Count == 0)
+            throw new InvalidOperationException("La section [[contenu]] est absente ou vide dans book.toml.");
+
+        return projet.Contenu.Select((item, index) =>
+        {
+            if (string.IsNullOrWhiteSpace(item.Fichier))
+                throw new InvalidOperationException($"L'entrée [[contenu]] #{index + 1} n'a pas de champ 'fichier'.");
+
+            var fichier = ResoudreCheminFichier(item.Fichier, projectDir, $"contenu[{index}].fichier");
+            return new ContenuItem { Fichier = fichier, Navigation = item.Navigation };
+        }).ToList();
     }
 
     private static FileInfo ResoudreCheminFichier(string chemin, DirectoryInfo projectDir, string nomChamp)
@@ -54,25 +78,6 @@ public static class ProjectParser
         return fichier;
     }
 
-    public static List<ContenuItem> ParseContenu(string toml, DirectoryInfo projectDir)
-    {
-        var projet = TomlSerializer.Deserialize<ProjetToml>(toml, Options)
-            ?? throw new InvalidOperationException("Le fichier book.toml est invalide.");
-
-        if (projet.Contenu is null || projet.Contenu.Count == 0)
-            throw new InvalidOperationException("La section [[contenu]] est absente ou vide dans book.toml.");
-
-        return projet.Contenu.Select((item, index) =>
-        {
-            if (string.IsNullOrWhiteSpace(item.Fichier))
-                throw new InvalidOperationException($"L'entrée [[contenu]] #{index + 1} n'a pas de champ 'fichier'.");
-
-            var fichier = ResoudreCheminFichier(item.Fichier, projectDir, $"contenu[{index}].fichier");
-            return new ContenuItem { Fichier = fichier, Navigation = item.Navigation };
-        }).ToList();
-    }
-
-    // Classes internes pour la désérialisation TOML
     private class ProjetToml
     {
         public Metadonnees? Metadonnees { get; set; }

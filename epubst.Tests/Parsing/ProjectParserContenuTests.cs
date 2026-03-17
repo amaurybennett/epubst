@@ -4,22 +4,31 @@ namespace epubst.Tests.Parsing;
 
 public class ProjectParserContenuTests
 {
-    private static DirectoryInfo CreeRepertoireTemporaire()
+    private static string TomlMetaEpub(DirectoryInfo dir)
     {
-        return Directory.CreateTempSubdirectory("epubst_test_");
+        File.WriteAllText(Path.Combine(dir.FullName, "cover.jpg"), "");
+        return """
+            [metadonnees]
+            titre = "Mon Roman"
+            auteurs = ["Moi"]
+            langue = "fr"
+
+            [epub]
+            couverture = "cover.jpg"
+
+            """;
     }
 
     [Fact]
     public void Parse_ContenusMultiples_RetourneListeOrdrée()
     {
-        var dir = CreeRepertoireTemporaire();
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
         try
         {
             File.WriteAllText(Path.Combine(dir.FullName, "remerciements.md"), "");
             File.WriteAllText(Path.Combine(dir.FullName, "corps.md"), "");
             File.WriteAllText(Path.Combine(dir.FullName, "mentions.md"), "");
-
-            var toml = """
+            var toml = TomlMetaEpub(dir) + """
                 [[contenu]]
                 fichier = "remerciements.md"
 
@@ -31,12 +40,12 @@ public class ProjectParserContenuTests
                 fichier = "mentions.md"
                 """;
 
-            var items = ProjectParser.ParseContenu(toml, dir);
+            var items = ProjectParser.Parse(toml, dir).Contenu;
 
             Assert.Equal(3, items.Count);
-            Assert.EndsWith("remerciements.md", items[0].Fichier.Name);
-            Assert.EndsWith("corps.md", items[1].Fichier.Name);
-            Assert.EndsWith("mentions.md", items[2].Fichier.Name);
+            Assert.Equal("remerciements.md", items[0].Fichier.Name);
+            Assert.Equal("corps.md", items[1].Fichier.Name);
+            Assert.Equal("mentions.md", items[2].Fichier.Name);
         }
         finally { dir.Delete(recursive: true); }
     }
@@ -44,17 +53,16 @@ public class ProjectParserContenuTests
     [Fact]
     public void Parse_NavigationFalseParDefaut()
     {
-        var dir = CreeRepertoireTemporaire();
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
         try
         {
             File.WriteAllText(Path.Combine(dir.FullName, "remerciements.md"), "");
-
-            var toml = """
+            var toml = TomlMetaEpub(dir) + """
                 [[contenu]]
                 fichier = "remerciements.md"
                 """;
 
-            var items = ProjectParser.ParseContenu(toml, dir);
+            var items = ProjectParser.Parse(toml, dir).Contenu;
 
             Assert.False(items[0].Navigation);
         }
@@ -64,18 +72,17 @@ public class ProjectParserContenuTests
     [Fact]
     public void Parse_NavigationTrue_Conservee()
     {
-        var dir = CreeRepertoireTemporaire();
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
         try
         {
             File.WriteAllText(Path.Combine(dir.FullName, "corps.md"), "");
-
-            var toml = """
+            var toml = TomlMetaEpub(dir) + """
                 [[contenu]]
                 fichier = "corps.md"
                 navigation = true
                 """;
 
-            var items = ProjectParser.ParseContenu(toml, dir);
+            var items = ProjectParser.Parse(toml, dir).Contenu;
 
             Assert.True(items[0].Navigation);
         }
@@ -85,16 +92,13 @@ public class ProjectParserContenuTests
     [Fact]
     public void Parse_SectionContenuAbsente_LanceException()
     {
-        var dir = CreeRepertoireTemporaire();
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
         try
         {
-            var toml = """
-                [metadonnees]
-                titre = "Mon Roman"
-                """;
+            var toml = TomlMetaEpub(dir);
 
             Assert.Throws<InvalidOperationException>(() =>
-                ProjectParser.ParseContenu(toml, dir));
+                ProjectParser.Parse(toml, dir));
         }
         finally { dir.Delete(recursive: true); }
     }
@@ -102,16 +106,16 @@ public class ProjectParserContenuTests
     [Fact]
     public void Parse_FichierIntrouvable_MessageContientChemin()
     {
-        var dir = CreeRepertoireTemporaire();
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
         try
         {
-            var toml = """
+            var toml = TomlMetaEpub(dir) + """
                 [[contenu]]
                 fichier = "inexistant.md"
                 """;
 
             var ex = Assert.Throws<FileNotFoundException>(() =>
-                ProjectParser.ParseContenu(toml, dir));
+                ProjectParser.Parse(toml, dir));
 
             Assert.Contains("inexistant.md", ex.Message);
             Assert.Contains(dir.FullName, ex.Message);
@@ -122,16 +126,16 @@ public class ProjectParserContenuTests
     [Fact]
     public void Parse_ChampFichierAbsent_LanceException()
     {
-        var dir = CreeRepertoireTemporaire();
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
         try
         {
-            var toml = """
+            var toml = TomlMetaEpub(dir) + """
                 [[contenu]]
                 navigation = true
                 """;
 
             Assert.Throws<InvalidOperationException>(() =>
-                ProjectParser.ParseContenu(toml, dir));
+                ProjectParser.Parse(toml, dir));
         }
         finally { dir.Delete(recursive: true); }
     }

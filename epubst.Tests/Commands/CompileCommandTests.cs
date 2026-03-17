@@ -9,6 +9,7 @@ public class CompileCommandTests
         var dir = Directory.CreateTempSubdirectory("epubst_test_");
         File.WriteAllText(Path.Combine(dir.FullName, "cover.jpg"), "");
         var bookToml = Path.Combine(dir.FullName, "book.toml");
+        File.WriteAllText(Path.Combine(dir.FullName, "corps.md"), "");
         File.WriteAllText(bookToml, """
             [metadonnees]
             titre = "Mon Roman"
@@ -17,6 +18,10 @@ public class CompileCommandTests
 
             [epub]
             couverture = "cover.jpg"
+
+            [[contenu]]
+            fichier = "corps.md"
+            navigation = true
             """);
         return (dir, bookToml);
     }

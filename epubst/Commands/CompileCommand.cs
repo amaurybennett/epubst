@@ -31,12 +31,11 @@ public static class CompileCommand
                 var toml = File.ReadAllText(fichier.FullName);
                 var projectDir = fichier.Directory!;
 
-                var metadonnees = ProjectParser.ParseMetadonnees(toml);
-                var epubOptions = ProjectParser.ParseEpubOptions(toml, projectDir);
+                var projet = ProjectParser.Parse(toml, projectDir);
 
-                Console.WriteLine($"Projet : {metadonnees.Titre}");
-                Console.WriteLine($"Auteur(s) : {string.Join(", ", metadonnees.Auteurs)}");
-                Console.WriteLine($"Couverture : {epubOptions.Couverture.FullName}");
+                Console.WriteLine($"Projet : {projet.Metadonnees.Titre}");
+                Console.WriteLine($"Auteur(s) : {string.Join(", ", projet.Metadonnees.Auteurs)}");
+                Console.WriteLine($"Couverture : {projet.EpubOptions.Couverture.FullName}");
 
                 // TODO: implémenter la compilation ePub
                 Console.WriteLine("Compilation non encore implémentée.");
