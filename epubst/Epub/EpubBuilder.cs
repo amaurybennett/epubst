@@ -31,7 +31,7 @@ public static class EpubBuilder
             var markdown = File.ReadAllText(item.Fichier.FullName);
             var nomBase  = Path.GetFileNameWithoutExtension(item.Fichier.Name);
             var nomCss   = projet.EpubOptions.Css?.Name;
-            var result   = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss);
+            var result   = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees);
 
             documents.AddRange(result.Documents);
             chapitres.AddRange(result.Chapitres);

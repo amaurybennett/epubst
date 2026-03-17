@@ -16,8 +16,11 @@ public static class MarkdownConverter
         .UseCustomContainers()
         .Build();
 
-    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null)
+    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null, Metadonnees? meta = null)
     {
+        if (meta is not null)
+            markdown = TemplateSubstitutor.Substituer(markdown, meta);
+
         var document = Markdown.Parse(markdown, Pipeline);
         var blocs = document.ToList();
         var images = new List<FileInfo>();
