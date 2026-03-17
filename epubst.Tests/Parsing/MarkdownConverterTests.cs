@@ -156,15 +156,15 @@ public class MarkdownConverterTests
     }
 
     [Fact]
-    public void Convert_NavigationTrue_NomsFichiersNumerotes()
+    public void Convert_NavigationTrue_NomsFichiersDerivesDesTitres()
     {
-        var markdown = "# Ch1\n\n# Ch2\n\n# Ch3";
+        var markdown = "# Prologue\n\n# Chapitre 42\n\n# Épilogue";
 
         var result = MarkdownConverter.Convert(markdown, navigation: true, nomFichierBase: "corps");
 
-        Assert.Equal("corps_ch001.xhtml", result.Documents[0].NomFichier);
-        Assert.Equal("corps_ch002.xhtml", result.Documents[1].NomFichier);
-        Assert.Equal("corps_ch003.xhtml", result.Documents[2].NomFichier);
+        Assert.Equal("corps_prologue.xhtml", result.Documents[0].NomFichier);
+        Assert.Equal("corps_chapitre_42.xhtml", result.Documents[1].NomFichier);
+        Assert.Equal("corps_epilogue.xhtml", result.Documents[2].NomFichier);
     }
 
     [Fact]
@@ -229,5 +229,134 @@ public class MarkdownConverterTests
 
         Assert.Contains("<hr/>", result.Documents[0].Contenu);
         Assert.DoesNotContain("<hr>", result.Documents[0].Contenu);
+    }
+
+    // ========== GenericAttributes ==========
+
+    [Fact]
+    public void Convert_GenericAttributes_ParagrapheAvecClasse()
+    {
+        var result = MarkdownConverter.Convert("{.dedicace}\nÀ mes parents.", navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("<p class=\"dedicace\">À mes parents.</p>", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_GenericAttributes_ParagraphePlusieursClasses()
+    {
+        var result = MarkdownConverter.Convert("{.premiere .importante}\nTexte.", navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("class=\"premiere importante\"", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_GenericAttributes_H1AvecClasse()
+    {
+        var markdown = "# Prologue {.ouverture}";
+
+        var result = MarkdownConverter.Convert(markdown, navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("<h1 class=\"ouverture\">Prologue</h1>", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_GenericAttributes_H2AvecClasse()
+    {
+        var markdown = """
+            ## {.fondu}
+            """;
+
+        var result = MarkdownConverter.Convert(markdown, navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("<hr class=\"fondu\"/>", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_GenericAttributes_SansClasse_PasAttributClass()
+    {
+        var result = MarkdownConverter.Convert("Texte normal.", navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("<p>Texte normal.</p>", result.Documents[0].Contenu);
+    }
+
+    // ========== CustomContainers ==========
+
+    [Fact]
+    public void Convert_CustomContainer_RenduEnDivAvecClasse()
+    {
+        var markdown = """
+            ::: exergue
+            Il faisait nuit noire.
+            :::
+            """;
+
+        var result = MarkdownConverter.Convert(markdown, navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("<div class=\"exergue\">", result.Documents[0].Contenu);
+        Assert.Contains("</div>", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_CustomContainer_ContenuRenduDansDiv()
+    {
+        var markdown = """
+            ::: exergue
+            Il faisait nuit noire.
+
+            Les etoiles disparaissaient.
+            :::
+            """;
+
+        var result = MarkdownConverter.Convert(markdown, navigation: false, nomFichierBase: "test");
+
+        var contenu = result.Documents[0].Contenu;
+        Assert.Contains("<p>Il faisait nuit noire.</p>", contenu);
+        Assert.Contains("<p>Les etoiles disparaissaient.</p>", contenu);
+    }
+
+    // ========== Classe CSS du body ==========
+
+    [Fact]
+    public void Convert_NavigationFalse_BodyContientClasseAvecNomFichier()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "remerciements");
+
+        Assert.Contains("class=\"remerciements\"", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_NavigationTrue_BodyContientClasseAvecNomFichierEtTitre()
+    {
+        var result = MarkdownConverter.Convert("# Prologue", navigation: true, nomFichierBase: "corps");
+
+        Assert.Contains("class=\"corps_prologue\"", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_NomFichierAvecAccents_ClasseSanitisee()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "à_propos");
+
+        Assert.Contains("class=\"a_propos\"", result.Documents[0].Contenu);
+    }
+
+    // ========== CSS ==========
+
+    [Fact]
+    public void Convert_SansCssPersonnalise_SeulDefaultCssPresent()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "test");
+
+        Assert.Contains("default.css", result.Documents[0].Contenu);
+        Assert.Single(result.Documents[0].Contenu.Split("stylesheet").Skip(1).ToList());
+    }
+
+    [Fact]
+    public void Convert_AvecCssPersonnalise_DeuxLiensCss()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "test", nomFichierCss: "style.css");
+
+        Assert.Contains("default.css", result.Documents[0].Contenu);
+        Assert.Contains("style.css", result.Documents[0].Contenu);
     }
 }

@@ -1,7 +1,8 @@
-using System.Net;
 using System.Text;
 using epubst.Models;
 using Markdig;
+using Markdig.Extensions.CustomContainers;
+using Markdig.Renderers.Html;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
@@ -11,30 +12,32 @@ public static class MarkdownConverter
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .DisableHtml()
+        .UseGenericAttributes()
+        .UseCustomContainers()
         .Build();
 
-    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase)
+    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, string? nomFichierCss = null)
     {
         var document = Markdown.Parse(markdown, Pipeline);
         var blocs = document.ToList();
 
         return navigation
-            ? ConvertirAvecNavigation(blocs, nomFichierBase)
-            : ConvertirSansNavigation(blocs, nomFichierBase);
+            ? ConvertirAvecNavigation(blocs, nomFichierBase, nomFichierCss)
+            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss);
     }
 
-    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase)
+    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss)
     {
         var corps = RendreBlocs(blocs);
         var nomFichier = $"{nomFichierBase}.xhtml";
         return new ConversionResult
         {
-            Documents = [new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(nomFichierBase, corps) }],
+            Documents = [new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(nomFichierBase, nomFichierBase, corps, nomFichierCss) }],
             Chapitres = []
         };
     }
 
-    private static ConversionResult ConvertirAvecNavigation(List<Block> blocs, string nomFichierBase)
+    private static ConversionResult ConvertirAvecNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss)
     {
         // Segmenter par H1 — contenu avant le premier H1 ignoré (option C)
         var segments = new List<(string Titre, List<Block> Blocs)>();
@@ -48,7 +51,7 @@ public static class MarkdownConverter
                 if (titreEnCours != null)
                     segments.Add((titreEnCours, blocsEnCours));
 
-                titreEnCours = RendreInlines(h.Inline);
+                titreEnCours = ExtraireTexte(h.Inline);
                 blocsEnCours = [bloc];
             }
             else if (titreEnCours != null)
@@ -67,9 +70,10 @@ public static class MarkdownConverter
         for (int i = 0; i < segments.Count; i++)
         {
             var (titre, segmentBlocs) = segments[i];
-            var nomFichier = $"{nomFichierBase}_ch{i + 1:D3}.xhtml";
+            var nomFichier = $"{nomFichierBase}_{SanitiserNomFichier(titre)}.xhtml";
+            var classeBody = Path.GetFileNameWithoutExtension(nomFichier);
             var corps = RendreBlocs(segmentBlocs);
-            documents.Add(new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(titre, corps) });
+            documents.Add(new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(titre, classeBody, corps, nomFichierCss) });
             chapitres.Add(new ChapitreNav { Titre = titre, NomFichier = nomFichier });
         }
 
@@ -84,18 +88,31 @@ public static class MarkdownConverter
             switch (bloc)
             {
                 case HeadingBlock h when h.Level == 1:
-                    sb.AppendLine($"  <h1>{RendreInlines(h.Inline)}</h1>");
+                    sb.AppendLine($"  <h1{AttrClasse(h)}>{RendreInlines(h.Inline)}</h1>");
                     break;
                 case HeadingBlock h when h.Level == 2:
-                    sb.AppendLine("  <hr/>");
+                    sb.AppendLine($"  <hr{AttrClasse(h)}/>");
                     break;
                 case ParagraphBlock p:
-                    sb.AppendLine($"  <p>{RendreInlines(p.Inline)}</p>");
+                    sb.AppendLine($"  <p{AttrClasse(p)}>{RendreInlines(p.Inline)}</p>");
+                    break;
+                case CustomContainer cc:
+                    var classeDiv = cc.Info is not null ? $" class=\"{EscapeXml(cc.Info)}\"" : string.Empty;
+                    sb.AppendLine($"  <div{classeDiv}>");
+                    sb.Append(RendreBlocs(cc));
+                    sb.AppendLine("  </div>");
                     break;
                 // H3+ et blocs hors scope ignorés silencieusement
             }
         }
         return sb.ToString();
+    }
+
+    private static string AttrClasse(Block bloc)
+    {
+        var attrs = bloc.TryGetAttributes();
+        if (attrs?.Classes == null || attrs.Classes.Count == 0) return string.Empty;
+        return $" class=\"{string.Join(" ", attrs.Classes)}\"";
     }
 
     private static string RendreInlines(ContainerInline? inlines)
@@ -109,15 +126,36 @@ public static class MarkdownConverter
 
     private static string RendreInline(Inline inline) => inline switch
     {
-        LiteralInline lit => WebUtility.HtmlEncode(lit.Content.ToString()),
+        LiteralInline lit => EscapeXml(lit.Content.ToString()),
         EmphasisInline em when em.DelimiterCount == 1 => $"<em>{RendreInlines(em)}</em>",
         EmphasisInline em => $"<strong>{RendreInlines(em)}</strong>",
         _ => string.Empty
     };
 
-    private static string CreerEnveloppXhtml(string titre, string corps)
+    private static string EscapeXml(string texte) =>
+        texte.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+
+    private static string ExtraireTexte(ContainerInline? inlines)
     {
-        var titreEncode = WebUtility.HtmlEncode(titre);
+        if (inlines == null) return string.Empty;
+        var sb = new StringBuilder();
+        foreach (var inline in inlines)
+        {
+            if (inline is LiteralInline lit)
+                sb.Append(lit.Content.ToString());
+            else if (inline is ContainerInline container)
+                sb.Append(ExtraireTexte(container));
+        }
+        return sb.ToString();
+    }
+
+    private static string CreerEnveloppXhtml(string titre, string classeBody, string corps, string? nomFichierCss)
+    {
+        var titreEncode = EscapeXml(titre);
+        var lienCssPersonnalise = nomFichierCss is not null
+            ? $"\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"../styles/{nomFichierCss}\"/>"
+            : string.Empty;
+        var classeSanitisee = SanitiserClasseCss(classeBody);
         return $"""
             <?xml version="1.0" encoding="utf-8"?>
             <!DOCTYPE html>
@@ -125,11 +163,39 @@ public static class MarkdownConverter
             <head>
               <meta charset="utf-8"/>
               <title>{titreEncode}</title>
-              <link rel="stylesheet" type="text/css" href="../styles/default.css"/>
+              <link rel="stylesheet" type="text/css" href="../styles/default.css"/>{lienCssPersonnalise}
             </head>
-            <body>
+            <body class="{classeSanitisee}">
             {corps}</body>
             </html>
             """;
+    }
+
+    private static string SanitiserNomFichier(string valeur)
+    {
+        var sansAccents = valeur.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in sansAccents)
+        {
+            if (c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '_')
+                sb.Append(c);
+            else if (c >= 'A' && c <= 'Z')
+                sb.Append(char.ToLowerInvariant(c));
+            else if (c == ' ')
+                sb.Append('_');
+        }
+        return sb.ToString();
+    }
+
+    private static string SanitiserClasseCss(string valeur)
+    {
+        var sansAccents = valeur.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+        foreach (var c in sansAccents)
+        {
+            if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_')
+                sb.Append(c);
+        }
+        return sb.ToString();
     }
 }
