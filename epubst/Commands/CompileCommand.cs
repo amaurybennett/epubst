@@ -1,4 +1,5 @@
 using System.CommandLine;
+using epubst.Epub;
 using epubst.Parsing;
 
 namespace epubst.Commands;
@@ -52,21 +53,26 @@ public static class CompileCommand
                         throw new InvalidOperationException($"Impossible de créer le répertoire '{tmpDir.FullName}'.");
                 }
 
-                foreach (var item in projet.Contenu)
+                if (tmpDir is not null)
                 {
-                    var markdown = File.ReadAllText(item.Fichier.FullName);
-                    var nomBase = Path.GetFileNameWithoutExtension(item.Fichier.Name);
-                    var nomCss = projet.EpubOptions.Css?.Name;
-                    var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss);
-                    Console.WriteLine($"  {item.Fichier.Name} → {result.Documents.Count} document(s), {result.Chapitres.Count} chapitre(s)");
-
-                    if (tmpDir is not null)
+                    foreach (var item in projet.Contenu)
+                    {
+                        var markdown = File.ReadAllText(item.Fichier.FullName);
+                        var nomBase = Path.GetFileNameWithoutExtension(item.Fichier.Name);
+                        var nomCss = projet.EpubOptions.Css?.Name;
+                        var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss);
                         foreach (var doc in result.Documents)
                             File.WriteAllText(Path.Combine(tmpDir.FullName, doc.NomFichier), doc.Contenu);
+                    }
                 }
 
-                // TODO: implémenter EpubBuilder
-                Console.WriteLine("Assemblage ePub non encore implémenté.");
+                var fichierSortie = output ?? new FileInfo(
+                    Path.Combine(projectDir.FullName, $"{projet.Metadonnees.Titre}.epub"));
+
+                using var stream = fichierSortie.Open(FileMode.Create, FileAccess.Write);
+                EpubBuilder.Compiler(projet, projectDir, stream);
+
+                Console.WriteLine($"ePub généré : {fichierSortie.FullName}");
                 return 0;
             }
             catch (Exception ex)
