@@ -35,10 +35,17 @@ public static class CompileCommand
 
                 Console.WriteLine($"Projet : {projet.Metadonnees.Titre}");
                 Console.WriteLine($"Auteur(s) : {string.Join(", ", projet.Metadonnees.Auteurs)}");
-                Console.WriteLine($"Couverture : {projet.EpubOptions.Couverture.FullName}");
 
-                // TODO: implémenter la compilation ePub
-                Console.WriteLine("Compilation non encore implémentée.");
+                foreach (var item in projet.Contenu)
+                {
+                    var markdown = File.ReadAllText(item.Fichier.FullName);
+                    var nomBase = Path.GetFileNameWithoutExtension(item.Fichier.Name);
+                    var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase);
+                    Console.WriteLine($"  {item.Fichier.Name} → {result.Documents.Count} document(s), {result.Chapitres.Count} chapitre(s)");
+                }
+
+                // TODO: implémenter EpubBuilder
+                Console.WriteLine("Assemblage ePub non encore implémenté.");
                 return 0;
             }
             catch (Exception ex)

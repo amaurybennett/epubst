@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Markdig" Version="1.1.1" />
     <PackageReference Include="System.CommandLine" Version="3.0.0-preview.2.26159.112" />
     <PackageReference Include="Tomlyn" Version="1.2.0" />
   </ItemGroup>
