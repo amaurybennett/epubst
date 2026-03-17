@@ -11,4 +11,8 @@ public record Metadonnees
     public string? Editeur { get; init; }
     public string? Isbn { get; init; }
     public string? DatePublication { get; init; }
+    public string? BetaLecture { get; init; }
+    public string? Correction { get; init; }
+    public string? Couverture { get; init; }
+    public int? Copyright { get; init; }
 }
