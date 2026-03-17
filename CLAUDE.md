@@ -22,6 +22,7 @@
 - Projet de tests : `epubst.Tests`
 
 ## Commits
+- **Ne jamais commiter sans demande explicite de l'utilisateur** — c'est lui qui gère la granularité
 - Utiliser la norme Conventional Commits : `<type>(<scope>): <description>`
 - Types courants : `feat`, `fix`, `chore`, `test`, `refactor`
 - Exemples : `feat(parsing): section [[contenu]] du book.toml`, `fix(cli): message d'erreur fichier introuvable`

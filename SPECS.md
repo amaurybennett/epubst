@@ -13,6 +13,7 @@ Il est générique : il ne dépend pas d'un outil de génération de Markdown pa
 ```bash
 epubst compile book.toml
 epubst compile book.toml -o monlivre.epub
+epubst compile book.toml --debug-output   # génère les XHTML intermédiaires dans _tmp/
 ```
 
 ---
@@ -77,15 +78,18 @@ fichier = "a_propos_auteur.md"     # navigation = false implicite
 
 ## Markdown supporté (v1)
 
-| Syntaxe           | Rendu                                       |
-|-------------------|---------------------------------------------|
-| `# Titre`         | Titre de chapitre — alimente `nav.xhtml`    |
-| `## Titre`        | Séparateur de scène — rendu `* * *` via CSS |
-| Paragraphe normal | `<p>`                                       |
-| `*italique*`      | `<em>`                                      |
-| `**gras**`        | `<strong>`                                  |
+| Syntaxe                        | Rendu                                           |
+|--------------------------------|-------------------------------------------------|
+| `# Titre`                      | Titre de chapitre — alimente `nav.xhtml`        |
+| `## Titre`                     | Séparateur de scène — rendu `* * *` via CSS     |
+| Paragraphe normal              | `<p>`                                           |
+| `*italique*`                   | `<em>`                                          |
+| `**gras**`                     | `<strong>`                                      |
+| `![alt](chemin)`               | `<img>` — chemin relatif à `book.toml` ou absolu|
+| `{.classe}` avant un bloc      | Attribut `class` sur `<p>`, `<h1>`, `<hr>`     |
+| `::: classe` … `:::`           | `<div class="classe">` (bloc multi-paragraphes) |
 
-Hors scope v1 : tableaux, listes, images inline, notes de bas de page, code.
+Hors scope v1 : tableaux, listes, notes de bas de page, code.
 
 ---
 
@@ -106,10 +110,11 @@ OEBPS/
     style.css                     (copié depuis le projet, si présent)
   images/
     cover.jpg                     (copié depuis le projet)
+    logo.png                      (images référencées dans le Markdown)
   text/
     001_remerciements.xhtml
-    002_corps_ch001.xhtml         (un fichier par H1)
-    002_corps_ch002.xhtml
+    002_corps_prologue.xhtml      (un fichier par H1, nommé d'après le titre)
+    002_corps_chapitre_1.xhtml
     ...
     003_mentions_legales.xhtml
     004_a_propos_auteur.xhtml
@@ -174,11 +179,13 @@ epubst/
 │   └── CompileCommand.cs
 ├── Models/
 │   ├── BookProject.cs
-│   ├── Metadata.cs
-│   └── SpineItem.cs
+│   ├── Metadonnees.cs
+│   ├── EpubOptions.cs
+│   ├── ContenuItem.cs
+│   └── ConversionResult.cs     (XhtmlDocument, ChapitreNav, ConversionResult)
 ├── Parsing/
 │   ├── ProjectParser.cs        lit et valide book.toml → BookProject
-│   └── MarkdownConverter.cs   .md → XHTML + extraction des H1
+│   └── MarkdownConverter.cs   .md → XHTML + H1 + images référencées
 ├── Epub/
 │   ├── EpubBuilder.cs          orchestre la construction
 │   ├── OpfGenerator.cs         génère content.opf
