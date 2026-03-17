@@ -15,16 +15,23 @@ public static class CompileCommand
         Description = "Le fichier epub de sortie (optionnel)"
     };
 
+    public static readonly Option<bool> DebugOutputOption = new("--debug-output")
+    {
+        Description = "Génère les fichiers XHTML intermédiaires dans un dossier _tmp/ à côté de book.toml"
+    };
+
     public static Command Build()
     {
         var command = new Command("compile", "Compile un projet en ePub");
         command.Add(FichierArgument.AcceptExistingOnly());
         command.Add(OutputOption);
+        command.Add(DebugOutputOption);
 
         command.SetAction((ParseResult parseResult) =>
         {
             var fichier = parseResult.GetValue(FichierArgument)!;
             var output = parseResult.GetValue(OutputOption);
+            var debugOutput = parseResult.GetValue(DebugOutputOption);
 
             try
             {
@@ -36,6 +43,15 @@ public static class CompileCommand
                 Console.WriteLine($"Projet : {projet.Metadonnees.Titre}");
                 Console.WriteLine($"Auteur(s) : {string.Join(", ", projet.Metadonnees.Auteurs)}");
 
+                DirectoryInfo? tmpDir = null;
+                if (debugOutput)
+                {
+                    tmpDir = new DirectoryInfo(Path.Combine(projectDir.FullName, "_tmp"));
+                    tmpDir.Create();
+                    if (!tmpDir.Exists)
+                        throw new InvalidOperationException($"Impossible de créer le répertoire '{tmpDir.FullName}'.");
+                }
+
                 foreach (var item in projet.Contenu)
                 {
                     var markdown = File.ReadAllText(item.Fichier.FullName);
@@ -43,6 +59,10 @@ public static class CompileCommand
                     var nomCss = projet.EpubOptions.Css?.Name;
                     var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss);
                     Console.WriteLine($"  {item.Fichier.Name} → {result.Documents.Count} document(s), {result.Chapitres.Count} chapitre(s)");
+
+                    if (tmpDir is not null)
+                        foreach (var doc in result.Documents)
+                            File.WriteAllText(Path.Combine(tmpDir.FullName, doc.NomFichier), doc.Contenu);
                 }
 
                 // TODO: implémenter EpubBuilder
