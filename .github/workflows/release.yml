@@ -73,12 +73,66 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - uses: Justintime50/homebrew-releaser@v2
-        with:
-          homebrew_owner: amaurybennett
-          homebrew_tap: homebrew-epubst
-          formula_folder: Formula
-          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          install: 'bin.install "epubst"'
-          test: 'system "#{bin}/epubst", "--help"'
-          target_darwin_arm64: true
+      - name: Download macOS ARM64 asset
+        run: |
+          curl -fL -o epubst-osx-arm64.tar.gz \
+            "https://github.com/amaurybennett/epubst/releases/download/${GITHUB_REF_NAME}/epubst-osx-arm64.tar.gz"
+
+      - name: Compute SHA256
+        id: sha256
+        run: echo "value=$(sha256sum epubst-osx-arm64.tar.gz | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Clone tap
+        run: |
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/amaurybennett/homebrew-epubst.git tap
+
+      - name: Generate formula
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA256: ${{ steps.sha256.outputs.value }}
+        run: |
+          VERSION="${TAG#v}"
+          python3 - <<'PY'
+          import os, textwrap
+          tag     = os.environ["TAG"]
+          version = os.environ["VERSION"] if "VERSION" in os.environ else tag.lstrip("v")
+          sha256  = os.environ["SHA256"]
+          formula = textwrap.dedent(f"""\
+            # typed: true
+            # frozen_string_literal: true
+
+            class Epubst < Formula
+              desc "Compilateur Markdown vers ePub3, outil en ligne de commande .NET"
+              homepage "https://github.com/amaurybennett/epubst"
+              license "MIT"
+
+              on_macos do
+                if Hardware::CPU.arm?
+                  url "https://github.com/amaurybennett/epubst/releases/download/{tag}/epubst-osx-arm64.tar.gz"
+                  sha256 "{sha256}"
+                end
+              end
+
+              def install
+                bin.install "epubst"
+              end
+
+              test do
+                system "#{{bin}}/epubst", "--help"
+              end
+            end
+          """)
+          with open("tap/Formula/epubst.rb", "w") as f:
+              f.write(formula)
+          PY
+
+      - name: Commit and push
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd tap
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add Formula/epubst.rb
+          git commit -m "chore: bump epubst to ${TAG}"
+          git push
