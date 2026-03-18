@@ -17,13 +17,13 @@ jobs:
         include:
           - os: ubuntu-latest
             rid: linux-x64
-            archive: docst-linux-x64.tar.gz
+            archive: epubst-linux-x64.tar.gz
           - os: windows-latest
             rid: win-x64
-            archive: docst-win-x64.zip
+            archive: epubst-win-x64.zip
           - os: macos-latest
             rid: osx-arm64
-            archive: docst-osx-arm64.tar.gz
+            archive: epubst-osx-arm64.tar.gz
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
 
       - name: Publish
         run: >
-          dotnet publish docst/docst.csproj
+          dotnet publish epubst/epubst.csproj
           -c Release
           -r ${{ matrix.rid }}
           --self-contained
@@ -42,11 +42,11 @@ jobs:
 
       - name: Archive (Linux / macOS)
         if: runner.os != 'Windows'
-        run: tar -czf ${{ matrix.archive }} -C out docst
+        run: tar -czf ${{ matrix.archive }} -C out epubst
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path out\docst.exe -DestinationPath ${{ matrix.archive }}
+        run: Compress-Archive -Path out\epubst.exe -DestinationPath ${{ matrix.archive }}
 
       - uses: actions/upload-artifact@v4
         with:
