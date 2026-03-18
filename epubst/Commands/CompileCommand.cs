@@ -59,8 +59,9 @@ public static class CompileCommand
                     {
                         var markdown = File.ReadAllText(item.Fichier.FullName);
                         var nomBase = Path.GetFileNameWithoutExtension(item.Fichier.Name);
-                        var nomCss = projet.EpubOptions.Css?.Name;
-                        var result = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees);
+                        var nomCss        = projet.EpubOptions.Css?.Name;
+                        var avecFontesCss = projet.Fontes.Count > 0;
+                        var result        = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees, avecFontesCss);
                         foreach (var doc in result.Documents)
                             File.WriteAllText(Path.Combine(tmpDir.FullName, doc.NomFichier), doc.Contenu);
                     }

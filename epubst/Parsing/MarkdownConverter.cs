@@ -16,7 +16,7 @@ public static class MarkdownConverter
         .UseCustomContainers()
         .Build();
 
-    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null, Metadonnees? meta = null)
+    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null, Metadonnees? meta = null, bool avecFontesCss = false)
     {
         if (meta is not null)
             markdown = TemplateSubstitutor.Substituer(markdown, meta);
@@ -26,24 +26,24 @@ public static class MarkdownConverter
         var images = new List<FileInfo>();
 
         var result = navigation
-            ? ConvertirAvecNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images)
-            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images);
+            ? ConvertirAvecNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images, avecFontesCss)
+            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images, avecFontesCss);
 
         return result with { Images = images };
     }
 
-    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images)
+    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images, bool avecFontesCss)
     {
         var corps = RendreBlocs(blocs, projectDir, images);
         var nomFichier = $"{nomFichierBase}.xhtml";
         return new ConversionResult
         {
-            Documents = [new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(nomFichierBase, nomFichierBase, corps, nomFichierCss) }],
+            Documents = [new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(nomFichierBase, nomFichierBase, corps, nomFichierCss, avecFontesCss) }],
             Chapitres = []
         };
     }
 
-    private static ConversionResult ConvertirAvecNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images)
+    private static ConversionResult ConvertirAvecNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images, bool avecFontesCss)
     {
         // Segmenter par H1 — contenu avant le premier H1 ignoré (option C)
         var segments = new List<(string Titre, List<Block> Blocs)>();
@@ -79,7 +79,7 @@ public static class MarkdownConverter
             var nomFichier = $"{nomFichierBase}_{SanitiserNomFichier(titre)}.xhtml";
             var classeBody = Path.GetFileNameWithoutExtension(nomFichier);
             var corps = RendreBlocs(segmentBlocs, projectDir, images);
-            documents.Add(new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(titre, classeBody, corps, nomFichierCss) });
+            documents.Add(new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(titre, classeBody, corps, nomFichierCss, avecFontesCss) });
             chapitres.Add(new ChapitreNav { Titre = titre, NomFichier = nomFichier });
         }
 
@@ -181,9 +181,12 @@ public static class MarkdownConverter
         return sb.ToString();
     }
 
-    private static string CreerEnveloppXhtml(string titre, string classeBody, string corps, string? nomFichierCss)
+    private static string CreerEnveloppXhtml(string titre, string classeBody, string corps, string? nomFichierCss, bool avecFontesCss = false)
     {
         var titreEncode = EscapeXml(titre);
+        var lienFontesCss = avecFontesCss
+            ? "\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"../styles/fontes.css\"/>"
+            : string.Empty;
         var lienCssPersonnalise = nomFichierCss is not null
             ? $"\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"../styles/{nomFichierCss}\"/>"
             : string.Empty;
@@ -195,7 +198,7 @@ public static class MarkdownConverter
             <head>
               <meta charset="utf-8"/>
               <title>{titreEncode}</title>
-              <link rel="stylesheet" type="text/css" href="../styles/default.css"/>{lienCssPersonnalise}
+              <link rel="stylesheet" type="text/css" href="../styles/default.css"/>{lienFontesCss}{lienCssPersonnalise}
             </head>
             <body class="{classeSanitisee}">
             {corps}</body>

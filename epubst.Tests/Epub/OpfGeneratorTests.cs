@@ -249,4 +249,126 @@ public class OpfGeneratorTests
         }
         finally { dir.Delete(recursive: true); }
     }
+
+    // ========== CSS Fontes ==========
+
+    [Fact]
+    public void Generer_SansFontes_PasDentreCssFontes()
+    {
+        var opf = OpfGenerator.Generer(ProjetMinimal(), [], []);
+
+        Assert.DoesNotContain("fontes.css", opf);
+    }
+
+    [Fact]
+    public void Generer_AvecFontes_ManifestContientCssFontes()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var fichier = new FileInfo(Path.Combine(dir.FullName, "mafonte.otf"));
+            File.WriteAllText(fichier.FullName, "");
+            var projet = ProjetMinimal() with
+            {
+                Fontes = [new FonteItem { Nom = "Ma Fonte", Fichier = fichier }]
+            };
+
+            var opf = OpfGenerator.Generer(projet, [], []);
+
+            Assert.Contains("href=\"styles/fontes.css\"", opf);
+            Assert.Contains("id=\"css-fontes\"", opf);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
+    // ========== Fontes ==========
+
+    [Fact]
+    public void Generer_AvecFonteOtf_ManifestContientEntreeFont()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var fichier = new FileInfo(Path.Combine(dir.FullName, "mafonte.otf"));
+            File.WriteAllText(fichier.FullName, "");
+            var projet = ProjetMinimal() with
+            {
+                Fontes = [new FonteItem { Nom = "Ma Fonte", Fichier = fichier }]
+            };
+
+            var opf = OpfGenerator.Generer(projet, [], []);
+
+            Assert.Contains("href=\"fonts/mafonte.otf\"", opf);
+            Assert.Contains("media-type=\"font/otf\"", opf);
+            Assert.Contains("id=\"font-Ma Fonte\"", opf);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void Generer_AvecFonteTtf_MediaTypeCorrect()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var fichier = new FileInfo(Path.Combine(dir.FullName, "mafonte.ttf"));
+            File.WriteAllText(fichier.FullName, "");
+            var projet = ProjetMinimal() with
+            {
+                Fontes = [new FonteItem { Nom = "Ma Fonte", Fichier = fichier }]
+            };
+
+            var opf = OpfGenerator.Generer(projet, [], []);
+
+            Assert.Contains("media-type=\"font/ttf\"", opf);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void Generer_AvecFonteWoff2_MediaTypeCorrect()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var fichier = new FileInfo(Path.Combine(dir.FullName, "mafonte.woff2"));
+            File.WriteAllText(fichier.FullName, "");
+            var projet = ProjetMinimal() with
+            {
+                Fontes = [new FonteItem { Nom = "Ma Fonte", Fichier = fichier }]
+            };
+
+            var opf = OpfGenerator.Generer(projet, [], []);
+
+            Assert.Contains("media-type=\"font/woff2\"", opf);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void Generer_PlusieursPolices_ToutesPresentes()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var f1 = new FileInfo(Path.Combine(dir.FullName, "regular.otf"));
+            var f2 = new FileInfo(Path.Combine(dir.FullName, "bold.otf"));
+            File.WriteAllText(f1.FullName, "");
+            File.WriteAllText(f2.FullName, "");
+            var projet = ProjetMinimal() with
+            {
+                Fontes =
+                [
+                    new FonteItem { Nom = "Regular", Fichier = f1 },
+                    new FonteItem { Nom = "Bold",    Fichier = f2 }
+                ]
+            };
+
+            var opf = OpfGenerator.Generer(projet, [], []);
+
+            Assert.Contains("href=\"fonts/regular.otf\"", opf);
+            Assert.Contains("href=\"fonts/bold.otf\"", opf);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
 }

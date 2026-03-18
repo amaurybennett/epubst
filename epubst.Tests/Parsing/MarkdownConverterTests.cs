@@ -433,4 +433,33 @@ public class MarkdownConverterTests
         Assert.Contains("default.css", result.Documents[0].Contenu);
         Assert.Contains("style.css", result.Documents[0].Contenu);
     }
+
+    [Fact]
+    public void Convert_SansFontesCss_LienFontesCssAbsent()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "test", new DirectoryInfo("."));
+
+        Assert.DoesNotContain("fontes.css", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_AvecFontesCss_LienFontesCssPresentApresDefault()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "test", new DirectoryInfo("."), avecFontesCss: true);
+
+        var contenu = result.Documents[0].Contenu;
+        Assert.Contains("fontes.css", contenu);
+        Assert.True(contenu.IndexOf("default.css") < contenu.IndexOf("fontes.css"));
+    }
+
+    [Fact]
+    public void Convert_AvecFontesCssEtCssPersonnalise_TroisLiensCss()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "test", new DirectoryInfo("."), nomFichierCss: "style.css", avecFontesCss: true);
+
+        var contenu = result.Documents[0].Contenu;
+        Assert.Contains("default.css", contenu);
+        Assert.Contains("fontes.css", contenu);
+        Assert.Contains("style.css", contenu);
+    }
 }

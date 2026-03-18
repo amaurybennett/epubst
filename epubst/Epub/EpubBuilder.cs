@@ -19,6 +19,7 @@ public static class EpubBuilder
         AssemblerZip(sortie, projet, coverXhtml, navXhtml, opf, documents, images);
     }
 
+
     private static (List<XhtmlDocument> Documents, List<ChapitreNav> Chapitres, List<FileInfo> Images)
         ConvertirContenu(BookProject projet, DirectoryInfo projectDir)
     {
@@ -30,8 +31,9 @@ public static class EpubBuilder
         {
             var markdown = File.ReadAllText(item.Fichier.FullName);
             var nomBase  = Path.GetFileNameWithoutExtension(item.Fichier.Name);
-            var nomCss   = projet.EpubOptions.Css?.Name;
-            var result   = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees);
+            var nomCss        = projet.EpubOptions.Css?.Name;
+            var avecFontesCss = projet.Fontes.Count > 0;
+            var result        = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees, avecFontesCss);
 
             documents.AddRange(result.Documents);
             chapitres.AddRange(result.Chapitres);
@@ -58,6 +60,9 @@ public static class EpubBuilder
         EcrireTexte(archive, "OEBPS/cover.xhtml",       coverXhtml);
         EcrireTexte(archive, "OEBPS/styles/default.css", EmbeddedAssets.DefaultCss);
 
+        if (projet.Fontes.Count > 0)
+            EcrireTexte(archive, "OEBPS/styles/fontes.css", FontesCssGenerator.Generer(projet.Fontes));
+
         if (projet.EpubOptions.Css is not null)
             EcrireFichier(archive, $"OEBPS/styles/{projet.EpubOptions.Css.Name}", projet.EpubOptions.Css);
 
@@ -68,6 +73,9 @@ public static class EpubBuilder
 
         foreach (var doc in documents)
             EcrireTexte(archive, $"OEBPS/text/{doc.NomFichier}", doc.Contenu);
+
+        foreach (var fonte in projet.Fontes)
+            EcrireFichier(archive, $"OEBPS/fonts/{fonte.Fichier.Name}", fonte.Fichier);
     }
 
     private static void EcrireTexte(ZipArchive archive, string chemin, string contenu,

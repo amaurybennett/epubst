@@ -14,7 +14,7 @@ public static class OpfGenerator
             <?xml version="1.0" encoding="utf-8"?>
             <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
             {GenererMetadata(meta, epub)}
-            {GenererManifest(epub, documents, images)}
+            {GenererManifest(epub, documents, images, projet.Fontes)}
             {GenererSpine(documents)}
             </package>
             """;
@@ -45,7 +45,7 @@ public static class OpfGenerator
         return sb.ToString();
     }
 
-    private static string GenererManifest(EpubOptions epub, IReadOnlyList<XhtmlDocument> documents, IReadOnlyList<FileInfo> images)
+    private static string GenererManifest(EpubOptions epub, IReadOnlyList<XhtmlDocument> documents, IReadOnlyList<FileInfo> images, IReadOnlyList<FonteItem> fontes)
     {
         var sb = new StringBuilder();
         sb.AppendLine("  <manifest>");
@@ -55,6 +55,9 @@ public static class OpfGenerator
         sb.AppendLine($"    <item id=\"cover-img\" href=\"images/{EscapeXml(epub.Couverture.Name)}\" media-type=\"{MediaType(epub.Couverture.Name)}\" properties=\"cover-image\"/>");
         sb.AppendLine("    <item id=\"css-default\" href=\"styles/default.css\" media-type=\"text/css\"/>");
 
+        if (fontes.Count > 0)
+            sb.AppendLine("    <item id=\"css-fontes\" href=\"styles/fontes.css\" media-type=\"text/css\"/>");
+
         if (epub.Css is not null)
             sb.AppendLine($"    <item id=\"css-custom\" href=\"styles/{EscapeXml(epub.Css.Name)}\" media-type=\"text/css\"/>");
 
@@ -63,6 +66,9 @@ public static class OpfGenerator
 
         for (int i = 0; i < documents.Count; i++)
             sb.AppendLine($"    <item id=\"doc-{i}\" href=\"text/{EscapeXml(documents[i].NomFichier)}\" media-type=\"application/xhtml+xml\"/>");
+
+        foreach (var fonte in fontes)
+            sb.AppendLine($"    <item id=\"font-{EscapeXml(fonte.Nom)}\" href=\"fonts/{EscapeXml(fonte.Fichier.Name)}\" media-type=\"{MediaTypeFonte(fonte.Fichier.Name)}\"/>");
 
         sb.Append("  </manifest>");
         return sb.ToString();
@@ -90,6 +96,16 @@ public static class OpfGenerator
             ".svg"            => "image/svg+xml",
             ".webp"           => "image/webp",
             _                 => "application/octet-stream"
+        };
+
+    private static string MediaTypeFonte(string nomFichier) =>
+        Path.GetExtension(nomFichier).ToLowerInvariant() switch
+        {
+            ".otf"   => "font/otf",
+            ".ttf"   => "font/ttf",
+            ".woff"  => "font/woff",
+            ".woff2" => "font/woff2",
+            _        => "application/octet-stream"
         };
 
     private static string EscapeXml(string texte) =>
