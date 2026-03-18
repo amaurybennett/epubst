@@ -8,9 +8,9 @@ namespace epubst.Epub;
 
 public static class EpubBuilder
 {
-    public static void Compiler(BookProject projet, DirectoryInfo projectDir, Stream sortie)
+    public static void Compiler(BookProject projet, DirectoryInfo projectDir, Stream sortie, DirectoryInfo? debugDir = null)
     {
-        var (documents, chapitres, images) = ConvertirContenu(projet, projectDir);
+        var (documents, chapitres, images) = ConvertirContenu(projet, projectDir, debugDir);
 
         var coverXhtml = CoverGenerator.Generer(projet.EpubOptions.Couverture.Name);
         var navXhtml   = NavGenerator.Generer(chapitres);
@@ -21,7 +21,7 @@ public static class EpubBuilder
 
 
     private static (List<XhtmlDocument> Documents, List<ChapitreNav> Chapitres, List<FileInfo> Images)
-        ConvertirContenu(BookProject projet, DirectoryInfo projectDir)
+        ConvertirContenu(BookProject projet, DirectoryInfo projectDir, DirectoryInfo? debugDir)
     {
         var documents = new List<XhtmlDocument>();
         var chapitres = new List<ChapitreNav>();
@@ -29,8 +29,8 @@ public static class EpubBuilder
 
         foreach (var item in projet.Contenu)
         {
-            var markdown = File.ReadAllText(item.Fichier.FullName);
-            var nomBase  = Path.GetFileNameWithoutExtension(item.Fichier.Name);
+            var markdown      = File.ReadAllText(item.Fichier.FullName);
+            var nomBase       = Path.GetFileNameWithoutExtension(item.Fichier.Name);
             var nomCss        = projet.EpubOptions.Css?.Name;
             var avecFontesCss = projet.Fontes.Count > 0;
             var result        = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees, avecFontesCss);
@@ -41,6 +41,10 @@ public static class EpubBuilder
             foreach (var img in result.Images)
                 if (!images.Any(f => f.FullName == img.FullName))
                     images.Add(img);
+
+            if (debugDir is not null)
+                foreach (var doc in result.Documents)
+                    File.WriteAllText(Path.Combine(debugDir.FullName, doc.NomFichier), doc.Contenu);
         }
 
         return (documents, chapitres, images);

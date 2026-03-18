@@ -53,25 +53,11 @@ public static class CompileCommand
                         throw new InvalidOperationException($"Impossible de créer le répertoire '{tmpDir.FullName}'.");
                 }
 
-                if (tmpDir is not null)
-                {
-                    foreach (var item in projet.Contenu)
-                    {
-                        var markdown = File.ReadAllText(item.Fichier.FullName);
-                        var nomBase = Path.GetFileNameWithoutExtension(item.Fichier.Name);
-                        var nomCss        = projet.EpubOptions.Css?.Name;
-                        var avecFontesCss = projet.Fontes.Count > 0;
-                        var result        = MarkdownConverter.Convert(markdown, item.Navigation, nomBase, projectDir, nomCss, projet.Metadonnees, avecFontesCss);
-                        foreach (var doc in result.Documents)
-                            File.WriteAllText(Path.Combine(tmpDir.FullName, doc.NomFichier), doc.Contenu);
-                    }
-                }
-
                 var fichierSortie = output ?? new FileInfo(
                     Path.Combine(projectDir.FullName, $"{projet.Metadonnees.Titre}.epub"));
 
                 using var stream = fichierSortie.Open(FileMode.Create, FileAccess.Write);
-                EpubBuilder.Compiler(projet, projectDir, stream);
+                EpubBuilder.Compiler(projet, projectDir, stream, tmpDir);
 
                 Console.WriteLine($"ePub généré : {fichierSortie.FullName}");
                 return 0;
