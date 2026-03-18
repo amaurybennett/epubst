@@ -18,7 +18,8 @@ public static class ProjectParser
         {
             Metadonnees = ExtraireMetadonnees(projet),
             EpubOptions = ExtraireEpubOptions(projet, projectDir),
-            Contenu = ExtraireContenu(projet, projectDir)
+            Contenu = ExtraireContenu(projet, projectDir),
+            Fontes = ExtrairesFontes(projet, projectDir)
         };
     }
 
@@ -62,6 +63,23 @@ public static class ProjectParser
         }).ToList();
     }
 
+    private static List<FonteItem> ExtrairesFontes(ProjetToml projet, DirectoryInfo projectDir)
+    {
+        if (projet.Fonte is null || projet.Fonte.Count == 0)
+            return [];
+
+        return projet.Fonte.Select((item, index) =>
+        {
+            if (string.IsNullOrWhiteSpace(item.Nom))
+                throw new InvalidOperationException($"L'entrée [[fonte]] #{index + 1} n'a pas de champ 'nom'.");
+            if (string.IsNullOrWhiteSpace(item.Fichier))
+                throw new InvalidOperationException($"L'entrée [[fonte]] #{index + 1} n'a pas de champ 'fichier'.");
+
+            var fichier = ResoudreCheminFichier(item.Fichier, projectDir, $"fonte[{index}].fichier");
+            return new FonteItem { Nom = item.Nom, Fichier = fichier };
+        }).ToList();
+    }
+
     private static FileInfo ResoudreCheminFichier(string chemin, DirectoryInfo projectDir, string nomChamp)
     {
         var cheminResolu = Path.IsPathRooted(chemin)
@@ -83,6 +101,7 @@ public static class ProjectParser
         public Metadonnees? Metadonnees { get; set; }
         public EpubToml? Epub { get; set; }
         public List<ContenuToml>? Contenu { get; set; }
+        public List<FonteToml>? Fonte { get; set; }
     }
 
     private class EpubToml
@@ -96,5 +115,11 @@ public static class ProjectParser
     {
         public string? Fichier { get; set; }
         public bool Navigation { get; set; } = false;
+    }
+
+    private class FonteToml
+    {
+        public string? Nom { get; set; }
+        public string? Fichier { get; set; }
     }
 }
