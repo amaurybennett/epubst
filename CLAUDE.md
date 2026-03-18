@@ -30,3 +30,7 @@
 
 ## Specs du projet
 Voir `SPECS.md` pour les spécifications fonctionnelles complètes.
+
+## Backlog / idées futures
+- **Distribution Linux via Homebrew** : ajouter un bloc `on_linux` dans la formule avec l'asset `epubst-linux-x64.tar.gz` (déjà produit par le pipeline). En attente d'une machine Linux pour tester.
+- ~~**Distribution Windows via Scoop**~~ : abandonné, les utilisateurs Windows téléchargent manuellement depuis les releases GitHub.
