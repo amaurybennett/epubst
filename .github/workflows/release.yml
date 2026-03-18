@@ -73,10 +73,9 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - name: Download macOS ARM64 asset
-        run: |
-          curl -fL -o epubst-osx-arm64.tar.gz \
-            "https://github.com/amaurybennett/epubst/releases/download/${GITHUB_REF_NAME}/epubst-osx-arm64.tar.gz"
+      - uses: actions/download-artifact@v4
+        with:
+          name: epubst-osx-arm64.tar.gz
 
       - name: Compute SHA256
         id: sha256
