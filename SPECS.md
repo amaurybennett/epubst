@@ -55,6 +55,7 @@ table_des_matieres = false         # défaut : false
 
 [[contenu]]
 fichier = "remerciements.md"       # navigation = false implicite
+titre = "Remerciements"            # optionnel — surcharge la balise <title> du XHTML
 
 [[contenu]]
 fichier = "corps.md"
@@ -65,14 +66,24 @@ fichier = "mentions_legales.md"    # navigation = false implicite
 
 [[contenu]]
 fichier = "a_propos_auteur.md"     # navigation = false implicite
+
+[[fonte]]
+nom = "Ma Fonte"                   # identifiant utilisé dans le manifest OPF
+fichier = "assets/mafonte.otf"     # chemin relatif au book.toml (.otf, .ttf, .woff, .woff2)
+
+[[fonte]]
+nom = "Ma Fonte Bold"
+fichier = "assets/mafonte-bold.otf"
 ```
 
 ### Règles
 
 - `navigation` vaut `false` par défaut — seul le fichier principal le porte à `true`
+- `titre` dans `[[contenu]]` est optionnel — s'il est absent, le nom de fichier est utilisé comme `<title>`
 - `table_des_matieres` vaut `false` par défaut
 - Seuls `true` et `false` sont acceptés pour les booléens (pas de `oui`/`non`)
 - Les champs optionnels peuvent être omis sans erreur
+- `[[fonte]]` est optionnel et répétable — si absent, aucune police embarquée
 
 ---
 
@@ -107,7 +118,10 @@ OEBPS/
   cover.xhtml                     (générée automatiquement)
   styles/
     default.css                   (embarqué dans epubst)
+    fontes.css                    (généré automatiquement si des [[fonte]] sont déclarées)
     style.css                     (copié depuis le projet, si présent)
+  fonts/
+    mafonte.otf                   (polices déclarées dans [[fonte]])
   images/
     cover.jpg                     (copié depuis le projet)
     logo.png                      (images référencées dans le Markdown)
@@ -157,9 +171,15 @@ Minimaliste, conforme ePub3, compatible toutes liseuses :
 - Séparateur de scène (`<hr>`) rendu `* * *` centré avec espace autour
 - Pas de margin/padding surprenants
 
+### Polices embarquées
+
+Si des `[[fonte]]` sont déclarées, un fichier `fontes.css` est généré automatiquement avec les règles `@font-face` correspondantes. Il est chargé **après** `default.css` et **avant** le CSS personnalisé.
+
+Formats supportés : `.otf`, `.ttf`, `.woff`, `.woff2`.
+
 ### Surcharge
 
-Si un fichier `style.css` est déclaré dans `[epub]`, il est embarqué dans l'ePub et chargé **après** le CSS par défaut, permettant de surcharger n'importe quelle règle.
+Si un fichier `style.css` est déclaré dans `[epub]`, il est embarqué dans l'ePub et chargé **après** `default.css` (et après `fontes.css` si présent), permettant de surcharger n'importe quelle règle.
 
 ---
 
@@ -182,15 +202,18 @@ epubst/
 │   ├── Metadonnees.cs
 │   ├── EpubOptions.cs
 │   ├── ContenuItem.cs
+│   ├── FonteItem.cs
 │   └── ConversionResult.cs     (XhtmlDocument, ChapitreNav, ConversionResult)
 ├── Parsing/
 │   ├── ProjectParser.cs        lit et valide book.toml → BookProject
-│   └── MarkdownConverter.cs   .md → XHTML + H1 + images référencées
+│   ├── MarkdownConverter.cs    .md → XHTML + H1 + images référencées
+│   └── TemplateSubstitutor.cs  substitution %%meta.xxx%% dans le Markdown
 ├── Epub/
 │   ├── EpubBuilder.cs          orchestre la construction
 │   ├── OpfGenerator.cs         génère content.opf
 │   ├── NavGenerator.cs         génère nav.xhtml
-│   └── CoverGenerator.cs       génère cover.xhtml
+│   ├── CoverGenerator.cs       génère cover.xhtml
+│   └── FontesCssGenerator.cs   génère fontes.css depuis les [[fonte]]
 └── Assets/
     └── default.css             embarqué comme ressource
 ```
