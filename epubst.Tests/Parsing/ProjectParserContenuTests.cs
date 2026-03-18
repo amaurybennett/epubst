@@ -139,4 +139,43 @@ public class ProjectParserContenuTests
         }
         finally { dir.Delete(recursive: true); }
     }
+
+    [Fact]
+    public void Parse_TitreAbsent_NullParDefaut()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            File.WriteAllText(Path.Combine(dir.FullName, "corps.md"), "");
+            var toml = TomlMetaEpub(dir) + """
+                [[contenu]]
+                fichier = "corps.md"
+                """;
+
+            var item = ProjectParser.Parse(toml, dir).Contenu[0];
+
+            Assert.Null(item.Titre);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void Parse_TitrePresent_Conserve()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            File.WriteAllText(Path.Combine(dir.FullName, "remerciements.md"), "");
+            var toml = TomlMetaEpub(dir) + """
+                [[contenu]]
+                fichier = "remerciements.md"
+                titre = "Remerciements"
+                """;
+
+            var item = ProjectParser.Parse(toml, dir).Contenu[0];
+
+            Assert.Equal("Remerciements", item.Titre);
+        }
+        finally { dir.Delete(recursive: true); }
+    }
 }

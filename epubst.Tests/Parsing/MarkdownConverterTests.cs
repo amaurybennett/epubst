@@ -435,6 +435,30 @@ public class MarkdownConverterTests
     }
 
     [Fact]
+    public void Convert_SansTitreOverride_TitreEstNomFichier()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "remerciements", new DirectoryInfo("."));
+
+        Assert.Contains("<title>remerciements</title>", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_AvecTitreOverride_TitreUtilise()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "remerciements", new DirectoryInfo("."), titreOverride: "Remerciements");
+
+        Assert.Contains("<title>Remerciements</title>", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_TitreOverride_NomFichierInchange()
+    {
+        var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "remerciements", new DirectoryInfo("."), titreOverride: "Remerciements");
+
+        Assert.Equal("remerciements.xhtml", result.Documents[0].NomFichier);
+    }
+
+    [Fact]
     public void Convert_SansFontesCss_LienFontesCssAbsent()
     {
         var result = MarkdownConverter.Convert("Contenu.", navigation: false, nomFichierBase: "test", new DirectoryInfo("."));

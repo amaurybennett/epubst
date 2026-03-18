@@ -16,7 +16,7 @@ public static class MarkdownConverter
         .UseCustomContainers()
         .Build();
 
-    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null, Metadonnees? meta = null, bool avecFontesCss = false)
+    public static ConversionResult Convert(string markdown, bool navigation, string nomFichierBase, DirectoryInfo projectDir, string? nomFichierCss = null, Metadonnees? meta = null, bool avecFontesCss = false, string? titreOverride = null)
     {
         if (meta is not null)
             markdown = TemplateSubstitutor.Substituer(markdown, meta);
@@ -27,18 +27,19 @@ public static class MarkdownConverter
 
         var result = navigation
             ? ConvertirAvecNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images, avecFontesCss)
-            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images, avecFontesCss);
+            : ConvertirSansNavigation(blocs, nomFichierBase, nomFichierCss, projectDir, images, avecFontesCss, titreOverride);
 
         return result with { Images = images };
     }
 
-    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images, bool avecFontesCss)
+    private static ConversionResult ConvertirSansNavigation(List<Block> blocs, string nomFichierBase, string? nomFichierCss, DirectoryInfo projectDir, List<FileInfo> images, bool avecFontesCss, string? titreOverride)
     {
         var corps = RendreBlocs(blocs, projectDir, images);
         var nomFichier = $"{nomFichierBase}.xhtml";
+        var titre = titreOverride ?? nomFichierBase;
         return new ConversionResult
         {
-            Documents = [new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(nomFichierBase, nomFichierBase, corps, nomFichierCss, avecFontesCss) }],
+            Documents = [new XhtmlDocument { NomFichier = nomFichier, Contenu = CreerEnveloppXhtml(titre, nomFichierBase, corps, nomFichierCss, avecFontesCss) }],
             Chapitres = []
         };
     }

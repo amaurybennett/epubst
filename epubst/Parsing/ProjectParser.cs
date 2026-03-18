@@ -59,7 +59,7 @@ public static class ProjectParser
                 throw new InvalidOperationException($"L'entrée [[contenu]] #{index + 1} n'a pas de champ 'fichier'.");
 
             var fichier = ResoudreCheminFichier(item.Fichier, projectDir, $"contenu[{index}].fichier");
-            return new ContenuItem { Fichier = fichier, Navigation = item.Navigation };
+            return new ContenuItem { Fichier = fichier, Navigation = item.Navigation, Titre = item.Titre };
         }).ToList();
     }
 
@@ -115,6 +115,7 @@ public static class ProjectParser
     {
         public string? Fichier { get; set; }
         public bool Navigation { get; set; } = false;
+        public string? Titre { get; set; }
     }
 
     private class FonteToml
