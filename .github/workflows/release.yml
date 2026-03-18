@@ -88,13 +88,13 @@ jobs:
       - name: Generate formula
         env:
           TAG: ${{ github.ref_name }}
+          VERSION: ${{ github.ref_name }}
           SHA256: ${{ steps.sha256.outputs.value }}
         run: |
-          VERSION="${TAG#v}"
           python3 - <<'PY'
           import os, textwrap
           tag     = os.environ["TAG"]
-          version = os.environ["VERSION"] if "VERSION" in os.environ else tag.lstrip("v")
+          version = os.environ["VERSION"].lstrip("v")
           sha256  = os.environ["SHA256"]
           formula = textwrap.dedent(f"""\
             # typed: true
@@ -104,6 +104,7 @@ jobs:
               desc "Compilateur Markdown vers ePub3, outil en ligne de commande .NET"
               homepage "https://github.com/amaurybennett/epubst"
               license "MIT"
+              version "{version}"
 
               on_macos do
                 if Hardware::CPU.arm?
