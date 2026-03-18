@@ -67,3 +67,18 @@ jobs:
         with:
           files: artifacts/*
           generate_release_notes: true
+
+  homebrew:
+    name: Update Homebrew Tap
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Justintime50/homebrew-releaser@v2
+        with:
+          homebrew_owner: amaurybennett
+          homebrew_tap: homebrew-epubst
+          formula_folder: Formula
+          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          install: 'bin.install "epubst"'
+          test: 'system "#{bin}/epubst", "--help"'
+          target_darwin_arm64: true
