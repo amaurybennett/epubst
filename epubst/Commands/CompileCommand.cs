@@ -43,9 +43,6 @@ public static class CompileCommand
 
                 var projet = ProjectParser.Parse(toml, projectDir);
 
-                Console.WriteLine($"Projet : {projet.Metadonnees.Titre}");
-                Console.WriteLine($"Auteur(s) : {string.Join(", ", projet.Metadonnees.Auteurs)}");
-
                 DirectoryInfo? tmpDir = null;
                 if (debugOutput)
                 {
