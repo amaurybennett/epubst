@@ -6,8 +6,10 @@ public static class RootCommandBuilder
 {
     public static RootCommand Build()
     {
-        var root = new RootCommand("epubst — compilateur de projets Markdown en ePub");
-        root.Add(CompileCommand.Build());
+        var root = new RootCommand("epubst — compilateur de projets Markdown en ePub")
+        {
+            CompileCommand.Build()
+        };
         return root;
     }
 }

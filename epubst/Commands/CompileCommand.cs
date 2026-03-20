@@ -23,12 +23,14 @@ public static class CompileCommand
 
     public static Command Build()
     {
-        var command = new Command("compile", "Compile un projet en ePub");
-        command.Add(FichierArgument.AcceptExistingOnly());
-        command.Add(OutputOption);
-        command.Add(DebugOutputOption);
+        var command = new Command("compile", "Compile un projet en ePub")
+        {
+            FichierArgument.AcceptExistingOnly(),
+            OutputOption,
+            DebugOutputOption
+        };
 
-        command.SetAction((ParseResult parseResult) =>
+        command.SetAction(parseResult =>
         {
             var fichier = parseResult.GetValue(FichierArgument)!;
             var output = parseResult.GetValue(OutputOption);
