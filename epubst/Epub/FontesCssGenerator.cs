@@ -11,7 +11,8 @@ public static class FontesCssGenerator
         foreach (var fonte in fontes)
         {
             sb.AppendLine("@font-face {");
-            sb.AppendLine($"  font-family: \"{fonte.Nom}\";");
+            var nomEchappe = fonte.Nom.Replace("\\", "\\\\").Replace("\"", "\\\"");
+            sb.AppendLine($"  font-family: \"{nomEchappe}\";");
             sb.AppendLine($"  src: url(\"../fonts/{fonte.Fichier.Name}\");");
             sb.AppendLine("}");
         }

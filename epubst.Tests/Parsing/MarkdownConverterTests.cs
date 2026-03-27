@@ -414,6 +414,28 @@ public class MarkdownConverterTests
         finally { dir.Delete(recursive: true); }
     }
 
+    [Fact]
+    public void Convert_GenericAttributes_ClasseAvecCaracteresSpeciaux_Sanitisee()
+    {
+        var result = MarkdownConverter.Convert("{.\"onload=\"alert(1)}\nTexte.", navigation: false, nomFichierBase: "test", new DirectoryInfo("."));
+
+        // Les guillemets et = sont supprimés — pas d'injection d'attribut possible
+        Assert.DoesNotContain("onload=", result.Documents[0].Contenu);
+        Assert.DoesNotContain("alert(", result.Documents[0].Contenu);
+    }
+
+    [Fact]
+    public void Convert_ImagePathTraversal_LanceException()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                MarkdownConverter.Convert("![Logo](../../secret.png)", navigation: false, nomFichierBase: "test", new DirectoryInfo(dir.FullName)));
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
     // ========== CSS ==========
 
     [Fact]

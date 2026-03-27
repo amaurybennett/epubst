@@ -119,7 +119,7 @@ public static class MarkdownConverter
     {
         var attrs = bloc.TryGetAttributes();
         if (attrs?.Classes == null || attrs.Classes.Count == 0) return string.Empty;
-        return $" class=\"{string.Join(" ", attrs.Classes)}\"";
+        return $" class=\"{string.Join(" ", attrs.Classes.Select(SanitiserClasseCss))}\"";
     }
 
     private static string RendreInlines(ContainerInline? inlines, DirectoryInfo projectDir, List<FileInfo> images)
@@ -158,9 +158,14 @@ public static class MarkdownConverter
             ? chemin
             : Path.Combine(projectDir.FullName, chemin);
 
-        var fichier = new FileInfo(cheminResolu);
+        var cheminAbsolu = Path.GetFullPath(cheminResolu);
+        var baseAbsolue  = Path.GetFullPath(projectDir.FullName) + Path.DirectorySeparatorChar;
+        if (!cheminAbsolu.StartsWith(baseAbsolue, StringComparison.Ordinal))
+            throw new InvalidOperationException($"L'image '{chemin}' pointe en dehors du répertoire du projet.");
+
+        var fichier = new FileInfo(cheminAbsolu);
         if (!fichier.Exists)
-            throw new FileNotFoundException($"Image introuvable : '{cheminResolu}'.", cheminResolu);
+            throw new FileNotFoundException($"Image introuvable : '{cheminAbsolu}'.", cheminAbsolu);
 
         return fichier;
     }
