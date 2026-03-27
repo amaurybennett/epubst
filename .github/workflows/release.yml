@@ -115,7 +115,9 @@ jobs:
           MACOS_SHA=$(curl -sL "https://github.com/amaurybennett/epubst/releases/download/${RELEASE_TAG}/epubst-osx-arm64.tar.gz" | sha256sum | cut -d' ' -f1)
           LINUX_SHA=$(curl -sL "https://github.com/amaurybennett/epubst/releases/download/${RELEASE_TAG}/epubst-linux-x64.tar.gz" | sha256sum | cut -d' ' -f1)
 
-          git clone "https://x-access-token:${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}@github.com/ymauray/homebrew-tap.git" tap
+          git config --global credential.helper store
+          printf 'https://x-access-token:%s@github.com\n' "${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}" >> ~/.git-credentials
+          git clone "https://github.com/ymauray/homebrew-tap.git" tap
           cd tap
 
           VERSION=$VERSION MACOS_SHA=$MACOS_SHA LINUX_SHA=$LINUX_SHA python3 << 'PYEOF'
@@ -140,7 +142,7 @@ jobs:
           VERSION=${RELEASE_TAG#v}
           WIN_SHA=$(curl -sL "https://github.com/amaurybennett/epubst/releases/download/${RELEASE_TAG}/epubst-win-x64.zip" | sha256sum | cut -d' ' -f1)
 
-          git clone "https://x-access-token:${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}@github.com/ymauray/scoop-bucket.git" scoop
+          git clone "https://github.com/ymauray/scoop-bucket.git" scoop
           cd scoop
 
           VERSION=$VERSION WIN_SHA=$WIN_SHA python3 -c "
