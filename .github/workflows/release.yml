@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag à simuler (ex: v0.1.1)'
+        required: true
 
 permissions:
   contents: write
@@ -26,6 +31,10 @@ jobs:
             archive: epubst-osx-arm64.tar.gz
 
     steps:
+      - name: Set release tag
+        run: echo "RELEASE_TAG=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}" >> $GITHUB_ENV
+        shell: bash
+
       - uses: actions/checkout@v6
 
       - uses: actions/setup-dotnet@v5
@@ -53,11 +62,40 @@ jobs:
           name: ${{ matrix.archive }}
           path: ${{ matrix.archive }}
 
+      - name: Install nfpm
+        if: runner.os == 'Linux'
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt-get update -q
+          sudo apt-get install -y nfpm
+
+      - name: Package (.deb / .rpm)
+        if: runner.os == 'Linux'
+        run: |
+          VERSION=${RELEASE_TAG#v} nfpm package --config nfpm.yaml --packager deb --target epubst-linux-x64.deb
+          VERSION=${RELEASE_TAG#v} nfpm package --config nfpm.yaml --packager rpm --target epubst-linux-x64.rpm
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Linux'
+        with:
+          name: epubst-linux-x64.deb
+          path: epubst-linux-x64.deb
+
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Linux'
+        with:
+          name: epubst-linux-x64.rpm
+          path: epubst-linux-x64.rpm
+
+
   release:
     name: Create Release
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Set release tag
+        run: echo "RELEASE_TAG=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}" >> $GITHUB_ENV
+
       - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
@@ -65,74 +103,58 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: artifacts/*
           generate_release_notes: true
 
-  homebrew:
-    name: Update Homebrew Tap
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: epubst-osx-arm64.tar.gz
-
-      - name: Compute SHA256
-        id: sha256
-        run: echo "value=$(sha256sum epubst-osx-arm64.tar.gz | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-
-      - name: Clone tap
-        run: |
-          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/amaurybennett/homebrew-epubst.git tap
-
-      - name: Generate formula
+      - name: Update Homebrew tap
         env:
-          TAG: ${{ github.ref_name }}
-          VERSION: ${{ github.ref_name }}
-          SHA256: ${{ steps.sha256.outputs.value }}
+          HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN: ${{ secrets.HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN }}
         run: |
-          python3 - <<'PY'
-          import os, textwrap
-          tag     = os.environ["TAG"]
-          version = os.environ["VERSION"].lstrip("v")
-          sha256  = os.environ["SHA256"]
-          formula = textwrap.dedent(f"""\
-            # typed: true
-            # frozen_string_literal: true
+          VERSION=${RELEASE_TAG#v}
+          MACOS_SHA=$(curl -sL "https://github.com/amaurybennett/epubst/releases/download/${RELEASE_TAG}/epubst-osx-arm64.tar.gz" | sha256sum | cut -d' ' -f1)
+          LINUX_SHA=$(curl -sL "https://github.com/amaurybennett/epubst/releases/download/${RELEASE_TAG}/epubst-linux-x64.tar.gz" | sha256sum | cut -d' ' -f1)
 
-            class Epubst < Formula
-              desc "Compilateur Markdown vers ePub3, outil en ligne de commande .NET"
-              homepage "https://github.com/amaurybennett/epubst"
-              license "MIT"
-              version "{version}"
-
-              on_macos do
-                if Hardware::CPU.arm?
-                  url "https://github.com/amaurybennett/epubst/releases/download/{tag}/epubst-osx-arm64.tar.gz"
-                  sha256 "{sha256}"
-                end
-              end
-
-              def install
-                bin.install "epubst"
-              end
-
-              test do
-                system "#{{bin}}/epubst", "--help"
-              end
-            end
-          """)
-          with open("tap/Formula/epubst.rb", "w") as f:
-              f.write(formula)
-          PY
-
-      - name: Commit and push
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
+          git clone "https://x-access-token:${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}@github.com/ymauray/homebrew-tap.git" tap
           cd tap
-          git config user.email "github-actions@github.com"
-          git config user.name "GitHub Actions"
+
+          VERSION=$VERSION MACOS_SHA=$MACOS_SHA LINUX_SHA=$LINUX_SHA python3 << 'PYEOF'
+          import re, os
+          content = open('Formula/epubst.rb').read()
+          content = re.sub(r'version "[^"]*"', f'version "{os.environ["VERSION"]}"', content)
+          shas = iter([os.environ['MACOS_SHA'], os.environ['LINUX_SHA']])
+          content = re.sub(r'sha256 "[a-f0-9]*"', lambda m: f'sha256 "{next(shas)}"', content)
+          open('Formula/epubst.rb', 'w').write(content)
+          PYEOF
+
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
           git add Formula/epubst.rb
-          git commit -m "chore: bump epubst to ${TAG}"
+          git diff --staged --quiet || git commit -m "bump epubst to ${VERSION}"
+          git push
+
+      - name: Update Scoop bucket
+        env:
+          HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN: ${{ secrets.HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN }}
+        run: |
+          VERSION=${RELEASE_TAG#v}
+          WIN_SHA=$(curl -sL "https://github.com/amaurybennett/epubst/releases/download/${RELEASE_TAG}/epubst-win-x64.zip" | sha256sum | cut -d' ' -f1)
+
+          git clone "https://x-access-token:${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}@github.com/ymauray/scoop-bucket.git" scoop
+          cd scoop
+
+          VERSION=$VERSION WIN_SHA=$WIN_SHA python3 -c "
+          import json, os
+          v = os.environ['VERSION']
+          m = json.load(open('epubst.json'))
+          m['version'] = v
+          m['architecture']['64bit']['url'] = 'https://github.com/amaurybennett/epubst/releases/download/v' + v + '/epubst-win-x64.zip'
+          m['architecture']['64bit']['hash'] = 'sha256:' + os.environ['WIN_SHA']
+          open('epubst.json', 'w').write(json.dumps(m, indent=4) + '\n')
+          "
+
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add epubst.json
+          git diff --staged --quiet || git commit -m "bump epubst to ${VERSION}"
           git push
