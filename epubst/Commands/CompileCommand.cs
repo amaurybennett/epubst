@@ -52,8 +52,9 @@ public static class CompileCommand
                         throw new InvalidOperationException($"Impossible de créer le répertoire '{tmpDir.FullName}'.");
                 }
 
+                var titreSanitise = string.Concat(projet.Metadonnees.Titre.Split(Path.GetInvalidFileNameChars()));
                 var fichierSortie = output ?? new FileInfo(
-                    Path.Combine(projectDir.FullName, $"{projet.Metadonnees.Titre}.epub"));
+                    Path.Combine(projectDir.FullName, $"{titreSanitise}.epub"));
 
                 using var stream = fichierSortie.Open(FileMode.Create, FileAccess.Write);
                 EpubBuilder.Compiler(projet, projectDir, stream, tmpDir);

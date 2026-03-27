@@ -182,4 +182,44 @@ public class ProjectParserEpubOptionsTests
         }
         finally { dir.Delete(recursive: true); }
     }
+
+    // ========== Sécurité : path traversal ==========
+
+    [Fact]
+    public void Parse_CouverturePathTraversal_LanceException()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var toml = TomlMetaContenu(dir) + """
+
+                [epub]
+                couverture = "../../etc/passwd"
+                """;
+
+            Assert.Throws<InvalidOperationException>(() =>
+                ProjectParser.Parse(toml, dir));
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void Parse_CssPathTraversal_LanceException()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            File.WriteAllText(Path.Combine(dir.FullName, "cover.jpg"), "");
+            var toml = TomlMetaContenu(dir) + """
+
+                [epub]
+                couverture = "cover.jpg"
+                css = "../../etc/shadow"
+                """;
+
+            Assert.Throws<InvalidOperationException>(() =>
+                ProjectParser.Parse(toml, dir));
+        }
+        finally { dir.Delete(recursive: true); }
+    }
 }

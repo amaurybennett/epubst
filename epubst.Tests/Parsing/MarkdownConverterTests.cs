@@ -414,6 +414,18 @@ public class MarkdownConverterTests
         finally { dir.Delete(recursive: true); }
     }
 
+    [Fact]
+    public void Convert_ImagePathTraversal_LanceException()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                MarkdownConverter.Convert("![Logo](../../secret.png)", navigation: false, nomFichierBase: "test", new DirectoryInfo(dir.FullName)));
+        }
+        finally { dir.Delete(recursive: true); }
+    }
+
     // ========== CSS ==========
 
     [Fact]

@@ -178,4 +178,23 @@ public class ProjectParserContenuTests
         }
         finally { dir.Delete(recursive: true); }
     }
+
+    // ========== Sécurité : path traversal ==========
+
+    [Fact]
+    public void Parse_ContenuPathTraversal_LanceException()
+    {
+        var dir = Directory.CreateTempSubdirectory("epubst_test_");
+        try
+        {
+            var toml = TomlMetaEpub(dir) + """
+                [[contenu]]
+                fichier = "../../secret.md"
+                """;
+
+            Assert.Throws<InvalidOperationException>(() =>
+                ProjectParser.Parse(toml, dir));
+        }
+        finally { dir.Delete(recursive: true); }
+    }
 }

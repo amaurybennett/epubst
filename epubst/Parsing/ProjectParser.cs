@@ -86,12 +86,14 @@ public static class ProjectParser
             ? chemin
             : Path.Combine(projectDir.FullName, chemin);
 
-        var fichier = new FileInfo(cheminResolu);
+        var cheminAbsolu = Path.GetFullPath(cheminResolu);
+        var baseAbsolue  = Path.GetFullPath(projectDir.FullName) + Path.DirectorySeparatorChar;
+        if (!cheminAbsolu.StartsWith(baseAbsolue, StringComparison.Ordinal))
+            throw new InvalidOperationException($"Le chemin '{chemin}' spécifié dans '{nomChamp}' pointe en dehors du répertoire du projet.");
+
+        var fichier = new FileInfo(cheminAbsolu);
         if (!fichier.Exists)
-        {
-            var cheminAffiche = Path.IsPathRooted(chemin) ? chemin : fichier.FullName;
-            throw new FileNotFoundException($"Le fichier '{cheminAffiche}' spécifié dans '{nomChamp}' est introuvable.", fichier.FullName);
-        }
+            throw new FileNotFoundException($"Le fichier '{cheminAbsolu}' spécifié dans '{nomChamp}' est introuvable.", cheminAbsolu);
 
         return fichier;
     }
