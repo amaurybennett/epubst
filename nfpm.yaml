@@ -1,0 +1,14 @@
+name: epubst
+arch: amd64
+platform: linux
+version: ${VERSION}
+maintainer: Amaury Bennett
+description: Outil en ligne de commande .NET 10 qui compile un projet Markdown en fichier ePub3.
+homepage: https://github.com/amaurybennett/epubst
+license: MIT
+
+contents:
+  - src: out/epubst
+    dst: /usr/local/bin/epubst
+    file_info:
+      mode: 0755
