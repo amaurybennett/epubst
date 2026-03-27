@@ -119,7 +119,7 @@ public static class MarkdownConverter
     {
         var attrs = bloc.TryGetAttributes();
         if (attrs?.Classes == null || attrs.Classes.Count == 0) return string.Empty;
-        return $" class=\"{string.Join(" ", attrs.Classes)}\"";
+        return $" class=\"{string.Join(" ", attrs.Classes.Select(SanitiserClasseCss))}\"";
     }
 
     private static string RendreInlines(ContainerInline? inlines, DirectoryInfo projectDir, List<FileInfo> images)
