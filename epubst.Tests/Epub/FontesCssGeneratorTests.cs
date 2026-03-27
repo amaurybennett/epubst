@@ -44,6 +44,26 @@ public class FontesCssGeneratorTests
     }
 
     [Fact]
+    public void Generer_NomAvecGuillemet_EchappeDansCss()
+    {
+        var fonte = new FonteItem { Nom = "Fonte\"Malicieuse", Fichier = new FileInfo("fonte.otf") };
+
+        var css = FontesCssGenerator.Generer([fonte]);
+
+        Assert.Contains("font-family: \"Fonte\\\"Malicieuse\"", css);
+    }
+
+    [Fact]
+    public void Generer_NomAvecBackslash_EchappeDansCss()
+    {
+        var fonte = new FonteItem { Nom = "Fonte\\Evil", Fichier = new FileInfo("fonte.otf") };
+
+        var css = FontesCssGenerator.Generer([fonte]);
+
+        Assert.Contains("font-family: \"Fonte\\\\Evil\"", css);
+    }
+
+    [Fact]
     public void Generer_PlusieursPolices_ToutesPresentes()
     {
         var fontes = new List<FonteItem>
