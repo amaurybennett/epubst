@@ -31,6 +31,9 @@
 ## Specs du projet
 Voir `SPECS.md` pour les spécifications fonctionnelles complètes.
 
+## Sécurité
+Voir `SECURITY_AUDIT.md` pour le prompt d'audit réutilisable et l'historique des vulnérabilités corrigées.
+
 ## Backlog / idées futures
 - **Distribution Linux via Homebrew** : ajouter un bloc `on_linux` dans la formule avec l'asset `epubst-linux-x64.tar.gz` (déjà produit par le pipeline). En attente d'une machine Linux pour tester.
-- ~~**Distribution Windows via Scoop**~~ : abandonné, les utilisateurs Windows téléchargent manuellement depuis les releases GitHub.
+- **Distribution Windows via Scoop** : implémentée dans le workflow (`release.yml`), bucket `ymauray/scoop-bucket`.
