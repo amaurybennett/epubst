@@ -119,6 +119,13 @@ jobs:
           printf 'https://x-access-token:%s@github.com\n' "${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}" >> ~/.git-credentials
           git clone "https://github.com/ymauray/homebrew-tap.git" tap
           cd tap
+          BRANCH="automation/epubst/${RELEASE_TAG}"
+          PR_STATE=$(GH_TOKEN="${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}" gh pr list --repo ymauray/homebrew-tap --head "$BRANCH" --state all --json state --jq '.[0].state // empty')
+          if [ "$PR_STATE" = "CLOSED" ]; then
+            echo "The Homebrew pull request for ${RELEASE_TAG} was closed without merging."
+            exit 1
+          fi
+          git checkout -B "$BRANCH"
 
           VERSION=$VERSION MACOS_SHA=$MACOS_SHA LINUX_SHA=$LINUX_SHA python3 << 'PYEOF'
           import re, os
@@ -132,8 +139,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add Formula/epubst.rb
-          git diff --staged --quiet || git commit -m "bump epubst to ${VERSION}"
-          git push
+          if git diff --staged --quiet; then
+            exit 0
+          fi
+          git commit -m "bump epubst to ${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+          if [ -z "$PR_STATE" ]; then
+            GH_TOKEN="${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}" gh pr create --repo ymauray/homebrew-tap --base main --head "$BRANCH" --title "bump epubst to ${VERSION}" --body "Automated release update for ${RELEASE_TAG}."
+          fi
 
       - name: Update Scoop bucket
         env:
@@ -144,6 +157,13 @@ jobs:
 
           git clone "https://github.com/ymauray/scoop-bucket.git" scoop
           cd scoop
+          BRANCH="automation/epubst/${RELEASE_TAG}"
+          PR_STATE=$(GH_TOKEN="${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}" gh pr list --repo ymauray/scoop-bucket --head "$BRANCH" --state all --json state --jq '.[0].state // empty')
+          if [ "$PR_STATE" = "CLOSED" ]; then
+            echo "The Scoop pull request for ${RELEASE_TAG} was closed without merging."
+            exit 1
+          fi
+          git checkout -B "$BRANCH"
 
           VERSION=$VERSION WIN_SHA=$WIN_SHA python3 -c "
           import json, os
@@ -158,5 +178,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add epubst.json
-          git diff --staged --quiet || git commit -m "bump epubst to ${VERSION}"
-          git push
+          if git diff --staged --quiet; then
+            exit 0
+          fi
+          git commit -m "bump epubst to ${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+          if [ -z "$PR_STATE" ]; then
+            GH_TOKEN="${HOMEBREW_TAP_AND_SCOOP_BUCKET_TOKEN}" gh pr create --repo ymauray/scoop-bucket --base main --head "$BRANCH" --title "bump epubst to ${VERSION}" --body "Automated release update for ${RELEASE_TAG}."
+          fi
